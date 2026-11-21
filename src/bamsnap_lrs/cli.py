@@ -1,6 +1,9 @@
 import argparse
+import shlex
 import os
 import sys
+from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError, version as package_version
 
 
 def add_common_args(parser):
@@ -10,7 +13,7 @@ def add_common_args(parser):
     # Position input: either --pos (single region) or --regions (batch mode)
     position_group = parser.add_mutually_exclusive_group(required=True)
     position_group.add_argument("--pos", help="Genomic position, format: chr:start-end or chr:pos")
-    position_group.add_argument("--regions", help="BED or VCF file containing regions to process (batch mode). VCF files support structural variants with END tag.")
+    position_group.add_argument("--regions", help="BED or VCF file containing regions to process (batch mode). VCF batch files accept only INS, DEL, DUP, INV and skip unsupported or invalid records with warnings.")
     
     parser.add_argument("--out", help="Output file path (supports .png, .svg, .pdf). Required for single region mode.")
     parser.add_argument("--out-prefix", help="Output prefix for batch mode: outdir/outprefix_ (e.g., results/sample_.svg). Output files will be named: outprefix_chr_start_end.svg")
@@ -52,8 +55,46 @@ def add_common_args(parser):
     parser.add_argument("--coverage-max-depth", type=int, help="Coverage track maximum depth")
 
 
+def _get_bamsnap_version():
+    """Return the installed BamSnap-LRS distribution version when available."""
+    for distribution_name in ("bamsnap-lrs", "BamSnap-LRS", "bamsnap_lrs"):
+        try:
+            return package_version(distribution_name)
+        except PackageNotFoundError:
+            continue
+    # The current source release is v2.0.0. Keep this fallback in sync with
+    # the release version when running directly from a source checkout.
+    return "2.0.0"
+
+
+def _build_svg_metadata(record_counts=None):
+    """Build the minimal provenance metadata requested for each SVG."""
+    counts = record_counts or {}
+    return {
+        "version": _get_bamsnap_version(),
+        "command": shlex.join(sys.argv),
+        "date": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        "fetched_records": str(counts.get("fetched_records", 0)),
+        "filtered_records": str(counts.get("filtered_records", 0)),
+    }
+
+
+def _warn_if_high_alignment_count(record_counts, chrom, start, end, threshold=1000):
+    """Warn when a region contains more retained alignment records than the threshold."""
+    retained_records = (record_counts or {}).get("filtered_records", 0)
+    if retained_records > threshold:
+        print(
+            f"Warning: High alignment count in {chrom}:{start}-{end}: "
+            f"{retained_records:,} alignment records retained after filtering "
+            f"(threshold: {threshold:,}). Rendering may take longer and "
+            "produce a tall figure. Consider narrowing the region or applying "
+            "additional alignment filters.",
+            file=sys.stderr,
+        )
+
+
 def _render_svg_content(tracks, args, chrom, start, end, ref_seq, is_rna=False, gff_genes=None, bed_features=None,
-                        highlight_sites=None, highlight_samples=None):
+                        highlight_sites=None, highlight_samples=None, record_counts=None):
     """Render once with svg_renderer.py.
 
     This is the single source of truth for SVG / PDF / PNG output, so PNG will
@@ -93,6 +134,11 @@ def _render_svg_content(tracks, args, chrom, start, end, ref_seq, is_rna=False, 
         no_hap_filter=getattr(args, "no_hap_filter", False),
         hap_layout=getattr(args, "hap_layout", "packed"),
         focus_region=getattr(args, "focus_region", None),
+        metadata=(
+            _build_svg_metadata(record_counts)
+            if os.path.splitext(getattr(args, "out", "") or "")[1].lower() == ".svg"
+            else None
+        ),
     )
 
 
@@ -129,7 +175,7 @@ def _write_svg_based_output(svg_content: str, output_path: str):
 
 
 def render_output(tracks, args, chrom, start, end, ref_seq, is_rna=False, gff_genes=None, bed_features=None,
-                  highlight_sites=None, highlight_samples=None):
+                  highlight_sites=None, highlight_samples=None, record_counts=None):
     """Common rendering logic for DNA/RNA/highlight modes.
 
     PNG and PDF are now exported from the SVG renderer rather than using a
@@ -147,6 +193,7 @@ def render_output(tracks, args, chrom, start, end, ref_seq, is_rna=False, gff_ge
         bed_features=bed_features,
         highlight_sites=highlight_sites,
         highlight_samples=highlight_samples,
+        record_counts=record_counts,
     )
     _write_svg_based_output(svg_content, args.out)
 
@@ -385,7 +432,7 @@ def main():
                 process_single_region(region_args, chrom, start, end)
                 success_count += 1
                 print(f"  ✓ Saved to {output_path}", file=sys.stderr)
-            except (SystemExit, ValueError) as e:
+            except (SystemExit, ValueError, RuntimeError) as e:
                 # If process_single_region exits due to no reads, continue
                 error_msg = str(e) if e else "No reads found"
                 failed_regions.append((chrom, start, end, error_msg))
@@ -418,11 +465,21 @@ def main():
         start = max(0, pos - 250)
         end = pos + 250
 
-    process_single_region(args, chrom, start, end)
+    try:
+        process_single_region(args, chrom, start, end)
+    except (ValueError, RuntimeError, FileNotFoundError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def process_single_region(args, chrom, start, end):
     """Process a single genomic region"""
+
+    # Validate the requested reference contig before reading alignments. This
+    # avoids silently treating a contig-name mismatch as missing reference data.
+    if args.fa:
+        from .ref import validate_reference_contig
+        validate_reference_contig(args.fa, chrom)
 
     # Fetch annotation data if provided
     gff_genes = None
@@ -460,6 +517,9 @@ def process_single_region(args, chrom, start, end):
         if not highlight_sites:
             print(f"Note: no highlight VCF sites fall inside {chrom}:{start}-{end}", file=sys.stderr)
 
+    # Count alignment records at each stage for the SVG metadata.
+    record_counts = {"fetched_records": 0, "filtered_records": 0}
+
     # Fetch reads based on command type
     tracks = []
     titles = args.track_title if args.track_title else []
@@ -490,6 +550,7 @@ def process_single_region(args, chrom, start, end):
         empty_bams = []
         for i, bam_path in enumerate(args.bam):
             try:
+                bam_counts = {}
                 reads = fetch_reads(
                     bam_path,
                     chrom,
@@ -502,10 +563,14 @@ def process_single_region(args, chrom, start, end):
                     use_cs=args.use_cs,
                     use_ref=bool(args.fa),
                     fa_path=args.fa,
+                    record_counts=bam_counts,
                 )
+                for key in record_counts:
+                    record_counts[key] += bam_counts.get(key, 0)
             except Exception as e:
-                print(f"Error: Failed to read BAM file '{bam_path}': {e}", file=sys.stderr)
-                sys.exit(1)
+                raise RuntimeError(
+                    f"Failed to read BAM/CRAM file '{bam_path}': {e}"
+                ) from e
 
             if not reads:
                 empty_bams.append((bam_path, titles[i]))
@@ -542,11 +607,14 @@ def process_single_region(args, chrom, start, end):
                 print(f"  - {bam_path} ({title})", file=sys.stderr)
             print("", file=sys.stderr)
 
+        _warn_if_high_alignment_count(record_counts, chrom, start, end)
+
         ref_seq = None
         if args.fa:
             ref_seq = get_ref_subseq(args.fa, chrom, start, end)
         render_output(tracks, args, chrom, start, end, ref_seq, is_rna=False, gff_genes=gff_genes, bed_features=bed_features,
-                      highlight_sites=highlight_sites, highlight_samples=highlight_samples)
+                      highlight_sites=highlight_sites, highlight_samples=highlight_samples,
+                      record_counts=record_counts)
 
     elif args.cmd == "rna":
         from .reader import fetch_rna_reads
@@ -577,6 +645,7 @@ def process_single_region(args, chrom, start, end):
         empty_bams = []
         for i, bam_path in enumerate(args.bam):
             try:
+                bam_counts = {}
                 reads = fetch_rna_reads(
                     bam_path,
                     chrom,
@@ -589,13 +658,23 @@ def process_single_region(args, chrom, start, end):
                     use_cs=args.use_cs,
                     use_ref=bool(args.fa),
                     fa_path=args.fa,
+                    record_counts=bam_counts,
                 )
+                for key in record_counts:
+                    record_counts[key] += bam_counts.get(key, 0)
             except Exception as e:
                 file_type = "CRAM" if bam_path.lower().endswith('.cram') else "BAM"
-                print(f"Error: Failed to read {file_type} file '{bam_path}': {e}", file=sys.stderr)
+                hint = ""
+
                 if bam_path.lower().endswith('.cram') and not args.fa:
-                    print("  Hint: CRAM files require a reference genome. Try providing --fa <reference.fasta>", file=sys.stderr)
-                sys.exit(1)
+                    hint = (
+                        "\nHint: CRAM files require a reference genome. "
+                        "Try providing --fa <reference.fasta>"
+                    )
+
+                raise RuntimeError(
+                    f"Failed to read {file_type} file '{bam_path}': {e}{hint}"
+                ) from e
 
             if not reads:
                 empty_bams.append((bam_path, titles[i]))
@@ -627,11 +706,14 @@ def process_single_region(args, chrom, start, end):
                 print(f"  - {bam_path} ({title})", file=sys.stderr)
             print("", file=sys.stderr)
 
+        _warn_if_high_alignment_count(record_counts, chrom, start, end)
+
         ref_seq = None
         if args.fa:
             ref_seq = get_ref_subseq(args.fa, chrom, start, end)
         render_output(tracks, args, chrom, start, end, ref_seq, is_rna=True, gff_genes=gff_genes, bed_features=bed_features,
-                      highlight_sites=highlight_sites, highlight_samples=highlight_samples)
+                      highlight_sites=highlight_sites, highlight_samples=highlight_samples,
+                      record_counts=record_counts)
 
 
 if __name__ == "__main__":
