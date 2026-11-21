@@ -135,3 +135,23 @@ python bin/bamsnap-lrs dna \
     --track-title "Test Reads - SVG" \
     --width 1500 \
     -g example/test.gff --overview-detail show
+
+
+# python bin/bamsnap-lrs dna \
+# 	--bam "example/sim.mapping.sort.bam" \
+#     --pos "chrM:2700-2800" \
+#     --out example/chrM_2700_2800.gff.bamsnapLRS.svg \
+#     --fa "example/chm13v2.chrM.fasta" \
+#     --show-axis \
+#     --show-coverage \
+#     --track-title "Test Reads" \
+#     --width 400 \
+#     -g example/test.gff --overview-detail show
+    
+# python bin/bamsnap-lrs rna \
+# 	--bam example/rna/test.rna.bam \
+# 	--pos Cdec_SDR_X:280000-287000 \
+# 	--out example/rna/test.rna.part.svg \
+# 	--fa example/rna/ref.fasta \
+# 	--show-axis \
+# 	--width 400 --overview-detail show
