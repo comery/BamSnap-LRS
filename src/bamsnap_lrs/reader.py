@@ -58,7 +58,28 @@ def _query_span_on_original_read(r):
 
     return query_start, query_end, q_len
     
-    
+
+def _validate_alignment_contig(af, bam_path: str, chrom: str) -> None:
+    """Raise an error if the requested contig is absent from the alignment header."""
+    if chrom not in af.references:
+        contigs = list(af.references)
+        preview = ", ".join(contigs[:10])
+        if len(contigs) > 10:
+            preview += ", ..."
+
+        available = (
+            f" Available alignment contigs include: {preview}."
+            if preview else ""
+        )
+
+        raise ValueError(
+            f"Alignment contig '{chrom}' was not found in the header "
+            f"of '{bam_path}'. "
+            "Contig names must match exactly between the input region "
+            "and the alignment file."
+            f"{available}"
+        )
+
 def fetch_reads(
     bam_path: str,
     chrom: str,
@@ -71,11 +92,14 @@ def fetch_reads(
     use_cs: bool = True,
     use_ref: bool = False,
     fa_path: Optional[str] = None,
+    record_counts: Optional[dict] = None,
 ) -> List[Read]:
     import pysam
     import os
 
     reads: List[Read] = []
+    fetched_count = 0
+    filtered_count = 0
     
     # Detect file format and prepare open parameters
     is_cram = bam_path.lower().endswith('.cram')
@@ -87,7 +111,11 @@ def fetch_reads(
         open_kwargs['reference_filename'] = fa_path
     
     with pysam.AlignmentFile(bam_path, open_mode, **open_kwargs) as af:
+        # Validate requested contig against the BAM/CRAM header.
+        _validate_alignment_contig(af, bam_path, chrom)
+        
         for r in af.fetch(chrom, start, end):
+            fetched_count += 1
             if r.mapping_quality < mapq_min:
                 continue
             supp = bool(r.flag & 0x800)
@@ -97,6 +125,7 @@ def fetch_reads(
                 continue
             if not show_secondary and sec:
                 continue
+            filtered_count += 1
             md = None
             cs = None
             try:
@@ -134,6 +163,11 @@ def fetch_reads(
                     query_length=q_len,
                 )
             )
+    if record_counts is not None:
+        record_counts.update({
+            "fetched_records": fetched_count,
+            "filtered_records": filtered_count,
+        })
     return reads
 
 
@@ -149,6 +183,7 @@ def fetch_rna_reads(
     use_cs: bool = True,
     use_ref: bool = False,
     fa_path: Optional[str] = None,
+    record_counts: Optional[dict] = None,
 ) -> List[Read]:
     """Fetch RNA reads, handling spliced alignments.
     
@@ -162,6 +197,8 @@ def fetch_rna_reads(
     import os
     
     reads: List[Read] = []
+    fetched_count = 0
+    filtered_count = 0
     # Track transcripts by qname to ensure we get all segments
     transcript_segments: dict[str, List[Read]] = {}
     
@@ -175,7 +212,11 @@ def fetch_rna_reads(
         open_kwargs['reference_filename'] = fa_path
     
     with pysam.AlignmentFile(bam_path, open_mode, **open_kwargs) as af:
+        # Validate requested contig against the BAM/CRAM header.
+        _validate_alignment_contig(af, bam_path, chrom)
+        
         for r in af.fetch(chrom, start, end):
+            fetched_count += 1
             if r.mapping_quality < mapq_min:
                 continue
             supp = bool(r.flag & 0x800)
@@ -188,6 +229,7 @@ def fetch_rna_reads(
                 continue
             if not show_secondary and sec:
                 continue
+            filtered_count += 1
             
             md = None
             cs = None
@@ -234,5 +276,10 @@ def fetch_rna_reads(
             segments.sort(key=lambda x: -x.end)  # Reverse strand: right to left
         else:
             segments.sort(key=lambda x: x.start)  # Forward strand: left to right
-        all_reads.extend(segments)    
+        all_reads.extend(segments)
+    if record_counts is not None:
+        record_counts.update({
+            "fetched_records": fetched_count,
+            "filtered_records": filtered_count,
+        })
     return all_reads
