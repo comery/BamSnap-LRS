@@ -1,5 +1,15 @@
 <?xml version="1.0" ?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="927">
+<svg xmlns:bamsnap="https://github.com/comery/Bamsnap-LRS/metadata" xmlns="http://www.w3.org/2000/svg" width="1200" height="927">
+  <metadata id="bamsnap-lrs-metadata">
+    <bamsnap:provenance>
+      <bamsnap:version>2.0.0</bamsnap:version>
+      <bamsnap:command>../../bin/bamsnap-lrs dna --bam insertion.Cyclone.bam --bam insertion.HIFI.bam --bam insertion.ONT.bam --regions insertion.vcf --out-prefix insertion.svg --show-axis --show-coverage --padding 50 --fa /data/work/00.data/chm13v2.0.fa</bamsnap:command>
+      <bamsnap:date>2026-11-21T11:06:28Z</bamsnap:date>
+      <bamsnap:fetched_records>70</bamsnap:fetched_records>
+      <bamsnap:filtered_records>68</bamsnap:filtered_records>
+      <bamsnap:displayed_records>68</bamsnap:displayed_records>
+    </bamsnap:provenance>
+  </metadata>
   <rect x="0" y="0" width="1200" height="927" fill="white"/>
   <text x="20" y="10" font-size="10" font-weight="bold" fill="black" text-anchor="start">chrX</text>
   <line x1="20" y1="30" x2="1180" y2="30" stroke="black" stroke-width="1"/>

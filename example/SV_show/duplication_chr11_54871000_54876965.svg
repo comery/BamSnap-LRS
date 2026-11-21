@@ -1,45 +1,55 @@
 <?xml version="1.0" ?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="392">
+<svg xmlns:bamsnap="https://github.com/comery/Bamsnap-LRS/metadata" xmlns="http://www.w3.org/2000/svg" width="1200" height="392">
+  <metadata id="bamsnap-lrs-metadata">
+    <bamsnap:provenance>
+      <bamsnap:version>2.0.0</bamsnap:version>
+      <bamsnap:command>../../bin/bamsnap-lrs dna --bam duplication.HIFI.bam --regions duplication.vcf --out-prefix duplication.svg --show-axis --show-coverage --show-supp --overview-detail show --fa /data/work/00.data/chm13v2.0.fa</bamsnap:command>
+      <bamsnap:date>2026-11-21T11:06:34Z</bamsnap:date>
+      <bamsnap:fetched_records>36</bamsnap:fetched_records>
+      <bamsnap:filtered_records>36</bamsnap:filtered_records>
+      <bamsnap:displayed_records>36</bamsnap:displayed_records>
+    </bamsnap:provenance>
+  </metadata>
   <rect x="0" y="0" width="1200" height="392" fill="white"/>
   <text x="20" y="10" font-size="10" font-weight="bold" fill="black" text-anchor="start">chr11</text>
   <line x1="20" y1="30" x2="1180" y2="30" stroke="black" stroke-width="1"/>
   <line x1="20" y1="27" x2="20" y2="33" stroke="black" stroke-width="1"/>
   <text x="20" y="23" font-size="9" fill="black" text-anchor="start">54,871,000</text>
-  <line x1="135" y1="27" x2="135" y2="33" stroke="black" stroke-width="1"/>
-  <text x="135" y="23" font-size="9" fill="black" text-anchor="middle">54,871,596</text>
-  <line x1="251" y1="27" x2="251" y2="33" stroke="black" stroke-width="1"/>
-  <text x="251" y="23" font-size="9" fill="black" text-anchor="middle">54,872,192</text>
-  <line x1="367" y1="27" x2="367" y2="33" stroke="black" stroke-width="1"/>
-  <text x="367" y="23" font-size="9" fill="black" text-anchor="middle">54,872,788</text>
-  <line x1="483" y1="27" x2="483" y2="33" stroke="black" stroke-width="1"/>
-  <text x="483" y="23" font-size="9" fill="black" text-anchor="middle">54,873,384</text>
-  <line x1="599" y1="27" x2="599" y2="33" stroke="black" stroke-width="1"/>
-  <text x="599" y="23" font-size="9" fill="black" text-anchor="middle">54,873,980</text>
-  <line x1="715" y1="27" x2="715" y2="33" stroke="black" stroke-width="1"/>
-  <text x="715" y="23" font-size="9" fill="black" text-anchor="middle">54,874,576</text>
-  <line x1="831" y1="27" x2="831" y2="33" stroke="black" stroke-width="1"/>
-  <text x="831" y="23" font-size="9" fill="black" text-anchor="middle">54,875,172</text>
-  <line x1="947" y1="27" x2="947" y2="33" stroke="black" stroke-width="1"/>
-  <text x="947" y="23" font-size="9" fill="black" text-anchor="middle">54,875,768</text>
-  <line x1="1063" y1="27" x2="1063" y2="33" stroke="black" stroke-width="1"/>
-  <text x="1063" y="23" font-size="9" fill="black" text-anchor="middle">54,876,364</text>
-  <line x1="1179" y1="27" x2="1179" y2="33" stroke="black" stroke-width="1"/>
-  <text x="1180" y="23" font-size="9" fill="black" text-anchor="end">54,876,960</text>
-  <line x1="1180" y1="27" x2="1180" y2="33" stroke="black" stroke-width="1"/>
-  <text x="1180" y="23" font-size="9" fill="black" text-anchor="end">54,876,965</text>
+  <line x1="117" y1="27" x2="117" y2="33" stroke="black" stroke-width="1"/>
+  <text x="117" y="23" font-size="9" fill="black" text-anchor="middle">54,871,500</text>
+  <line x1="214" y1="27" x2="214" y2="33" stroke="black" stroke-width="1"/>
+  <text x="214" y="23" font-size="9" fill="black" text-anchor="middle">54,872,000</text>
+  <line x1="311" y1="27" x2="311" y2="33" stroke="black" stroke-width="1"/>
+  <text x="311" y="23" font-size="9" fill="black" text-anchor="middle">54,872,500</text>
+  <line x1="408" y1="27" x2="408" y2="33" stroke="black" stroke-width="1"/>
+  <text x="408" y="23" font-size="9" fill="black" text-anchor="middle">54,873,000</text>
+  <line x1="506" y1="27" x2="506" y2="33" stroke="black" stroke-width="1"/>
+  <text x="506" y="23" font-size="9" fill="black" text-anchor="middle">54,873,500</text>
+  <line x1="603" y1="27" x2="603" y2="33" stroke="black" stroke-width="1"/>
+  <text x="603" y="23" font-size="9" fill="black" text-anchor="middle">54,874,000</text>
+  <line x1="700" y1="27" x2="700" y2="33" stroke="black" stroke-width="1"/>
+  <text x="700" y="23" font-size="9" fill="black" text-anchor="middle">54,874,500</text>
+  <line x1="797" y1="27" x2="797" y2="33" stroke="black" stroke-width="1"/>
+  <text x="797" y="23" font-size="9" fill="black" text-anchor="middle">54,875,000</text>
+  <line x1="895" y1="27" x2="895" y2="33" stroke="black" stroke-width="1"/>
+  <text x="895" y="23" font-size="9" fill="black" text-anchor="middle">54,875,500</text>
+  <line x1="992" y1="27" x2="992" y2="33" stroke="black" stroke-width="1"/>
+  <text x="992" y="23" font-size="9" fill="black" text-anchor="middle">54,876,000</text>
+  <line x1="1089" y1="27" x2="1089" y2="33" stroke="black" stroke-width="1"/>
+  <text x="1089" y="23" font-size="9" fill="black" text-anchor="middle">54,876,500</text>
   <rect x="311" y="34" width="577" height="358" fill="#ebf2ff"/>
   <line x1="20" y1="34" x2="20" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="135" y1="34" x2="135" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="251" y1="34" x2="251" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="367" y1="34" x2="367" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="483" y1="34" x2="483" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="599" y1="34" x2="599" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="715" y1="34" x2="715" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="831" y1="34" x2="831" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="947" y1="34" x2="947" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="1063" y1="34" x2="1063" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="1179" y1="34" x2="1179" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="1180" y1="34" x2="1180" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="117" y1="34" x2="117" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="214" y1="34" x2="214" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="311" y1="34" x2="311" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="408" y1="34" x2="408" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="506" y1="34" x2="506" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="603" y1="34" x2="603" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="700" y1="34" x2="700" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="797" y1="34" x2="797" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="895" y1="34" x2="895" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="992" y1="34" x2="992" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="1089" y1="34" x2="1089" y2="392" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
   <rect x="0" y="34" width="1200" height="15" fill="#f5f5f5"/>
   <line x1="0" y1="48" x2="1200" y2="48" stroke="#c8c8c8" stroke-width="1"/>
   <text x="5" y="45" font-size="11" fill="black">Coverage: duplication.HIFI</text>
