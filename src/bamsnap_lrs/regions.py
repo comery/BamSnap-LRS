@@ -1,6 +1,8 @@
 """Parse BED and VCF files to extract genomic regions"""
 import os
 import gzip
+import sys
+from collections import Counter
 from typing import List, Tuple, Optional
 
 
@@ -28,6 +30,77 @@ def _first_int(value) -> Optional[int]:
         return int(str(value).split(',')[0])
     except (ValueError, TypeError):
         return None
+
+
+SUPPORTED_VCF_SVTYPES = frozenset({'INS', 'DEL', 'DUP', 'INV'})
+
+
+def _validate_vcf_sv_record(chrom: str, pos: int, ref: str, alt: str, info: dict):
+    """Validate an unambiguous, intrachromosomal SV before deriving plot bounds.
+
+    Returns (skip_category, reason) if a record must be skipped, or None if valid.
+    SNVs/other variants remain available via --highlight-vcf, but not the
+    --regions SV batch input.
+    """
+    svtype = str(info.get('SVTYPE', '')).upper()
+    if svtype not in SUPPORTED_VCF_SVTYPES:
+        return ('unsupported:' + (svtype or 'missing'),
+                f'unsupported SVTYPE={svtype or "missing"}; supported: INS, DEL, DUP, INV')
+
+    if pos < 1 or not chrom or not ref or ref == '.' or not alt or alt == '.':
+        return ('invalid_interval', 'missing or invalid CHROM, POS, REF, or ALT')
+    if ',' in alt or '[' in alt or ']' in alt:
+        return ('invalid_interval', 'multiallelic or breakend ALT is not supported in batch mode')
+    mate_chrom = str(info.get('CHR2', '')).strip()
+    if mate_chrom and mate_chrom != '.' and mate_chrom != chrom:
+        return ('invalid_interval', f'interchromosomal CHR2={mate_chrom}')
+
+    def parse_single_integer(key):
+        value = info.get(key)
+        if value is None or str(value).strip() in ('', '.'):
+            return None
+        if ',' in str(value):
+            raise ValueError(f'{key} has multiple values')
+        try:
+            return int(str(value))
+        except ValueError:
+            raise ValueError(f'{key} is not an integer') from None
+
+    try:
+        end = parse_single_integer('END')
+        svlen = parse_single_integer('SVLEN')
+    except ValueError as exc:
+        return ('invalid_interval', str(exc))
+
+    if end is not None and end < 1:
+        return ('invalid_interval', f'END={end} must be positive')
+    if svtype == 'INS':
+        # For an insertion, END=POS denotes the insertion anchor, NOT its
+        # inserted length. The insert length is given by SVLEN or explicit ALT.
+        # if end is not None and end != pos:
+            # return ('invalid_interval', f'INS END={end} differs from anchor POS={pos}')
+        if svlen is not None and svlen <= 0:
+            return ('invalid_interval', f'INS SVLEN={svlen} must be positive')
+        has_explicit_sequence = (
+            not alt.startswith('<') and
+            len(alt) > len(ref) and
+            all(base.upper() in 'ACGTN' for base in ref + alt)
+        )
+        if svlen is None and not has_explicit_sequence:
+            return ('invalid_interval', 'INS length unavailable (requires SVLEN or explicit inserted ALT sequence)')
+        return None
+
+    # DEL, DUP and INV must describe a reference-spanning interval.
+    # END is preferred when valid; SVLEN is used when END is unavailable.
+    # A disagreement is reported during parsing, but does not by itself make
+    # the interval indeterminate when a valid END is available.
+    if end is None and svlen is None:
+        return ('invalid_interval', 'neither END nor SVLEN is available')
+    if end is not None and end <= pos:
+        return ('invalid_interval', f'{svtype} END={end} must exceed POS={pos}')
+    if svlen is not None and svlen == 0:
+        return ('invalid_interval', f'{svtype} SVLEN cannot be zero')
+    return None
 
 
 def _round_half_length_to_250(length: int, minimum: int = 250) -> int:
@@ -67,13 +140,15 @@ def _infer_vcf_padding(pos: int, ref: str, alt: str, info: Optional[dict]) -> in
     if svtype == 'INS' or is_symbolic_ins or (end_pos is not None and end_pos == pos and abs_svlen > 0):
         return 150
 
+    # Prefer END when available, consistent with the target-interval
+    # calculation below; fall back to SVLEN only when END is unavailable.
     sv_len = 0
-    if abs_svlen > 0:
-        sv_len = abs_svlen
-    elif end_pos is not None and end_pos > pos:
+    if end_pos is not None and end_pos > pos:
         sv_len = end_pos - pos
+    elif abs_svlen > 0:
+        sv_len = abs_svlen
 
-    is_sv = svtype in {'INV', 'DEL', 'DUP', 'CNV', 'BND'} or sv_len > 50
+    is_sv = svtype in {'INV', 'DEL', 'DUP'} or sv_len > 50
     if is_sv and sv_len > 0:
         return _round_half_length_to_250(sv_len)
 
@@ -124,7 +199,7 @@ def _calculate_vcf_region(chrom: str, pos: int, ref: str, alt: str, info: Option
             end_pos > pos
             or end_pos == pos
             or variant_length > LARGE_VARIANT_THRESHOLD
-            or svtype in {'INV', 'DEL', 'DUP', 'CNV', 'INS', 'BND'}
+            or svtype in {'INV', 'DEL', 'DUP', 'INS'}
             or is_symbolic_alt
         ):
             use_sv_region = True
@@ -195,7 +270,7 @@ def _calculate_vcf_target_region(
             end_pos > pos
             or end_pos == pos
             or variant_length > LARGE_VARIANT_THRESHOLD
-            or svtype in {'INV', 'DEL', 'DUP', 'CNV', 'INS', 'BND'}
+            or svtype in {'INV', 'DEL', 'DUP', 'INS'}
             or is_symbolic_alt
         ):
             use_sv_region = True
@@ -246,17 +321,27 @@ def parse_regions_file(regions_path: str, padding: Optional[int] = None) -> List
     VCF format:
         - Columns: CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO, ...
         - POS is 1-based
-        - Supports standard VCF and VCFv4.2+ formats
-        - Handles structural variants with END tag in INFO field
-        - Handles SVTYPE and SVLEN for structural variants
-        - Calculates region based on REF/ALT lengths
+        - Batch VCF input accepts only SVTYPE=INS,DEL,DUP,INV
+        - Skips unsupported/malformed records with warnings and a summary
+        - Requires a determinable SV interval or insertion anchor/length
+        - Handles standard END/SVLEN fields, and explicit insertion alleles
         - Returns: (chrom, plot_start, plot_end, target_start, target_end)
     """
     if not os.path.exists(regions_path):
         raise FileNotFoundError(f"Regions file not found: {regions_path}")
     
     regions: List[Tuple[str, int, int, int, int]] = []
-    
+    skipped = Counter()
+    accepted_vcf_records = 0
+    interval_conflicts_warned = 0
+
+    def warn_vcf(line_num: int, chrom: str, pos: str, category: str, reason: str):
+        skipped[category] += 1
+        print(
+            f"Warning: VCF line {line_num} ({chrom}:{pos}) skipped: {reason}",
+            file=sys.stderr
+        )
+
     # Detect file format by extension
     is_vcf = regions_path.lower().endswith('.vcf') or regions_path.lower().endswith('.vcf.gz')
     is_gzipped = regions_path.lower().endswith('.gz')
@@ -287,27 +372,54 @@ def parse_regions_file(regions_path: str, padding: Optional[int] = None) -> List
             
             if is_vcf:
                 # VCF format: CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO, FORMAT, ...
-                if len(parts) < 5:  # At least CHROM, POS, ID, REF, ALT
+                chrom = parts[0] if parts else '?'
+                pos_string = parts[1] if len(parts) > 1 else '?'
+                if len(parts) < 8:
+                    warn_vcf(line_num, chrom, pos_string, 'malformed', 'fewer than 8 VCF columns')
                     continue
-                
-                chrom = parts[0]
                 try:
-                    pos = int(parts[1])  # 1-based position
-                    ref = parts[3] if len(parts) > 3 else ''
-                    alt = parts[4] if len(parts) > 4 else ''
-                    
-                    # Parse INFO field if present
-                    info = None
-                    if len(parts) > 7:
-                        info = _parse_vcf_info(parts[7])
-                    
-                    # Calculate region
+                    pos = int(parts[1])
+                except ValueError:
+                    warn_vcf(line_num, chrom, pos_string, 'malformed', 'invalid POS')
+                    continue
+                ref, alt = parts[3], parts[4]
+                info = _parse_vcf_info(parts[7])
+                if 'SVTYPE' in info:
+                    info['SVTYPE'] = str(info['SVTYPE']).upper()
+                issue = _validate_vcf_sv_record(chrom, pos, ref, alt, info)
+                if issue:
+                    category, reason = issue
+                    warn_vcf(line_num, chrom, pos_string, category, reason)
+                    continue
+
+                # END is the preferred interval boundary when valid. If END
+                # and SVLEN disagree, report the discrepancy but retain the
+                # record when END provides a usable interval.
+                svtype = str(info.get('SVTYPE', '')).upper()
+                end_value = _first_int(info.get('END'))
+                svlen_value = _first_int(info.get('SVLEN'))
+                if (
+                    svtype in {'DEL', 'DUP', 'INV'}
+                    and end_value is not None
+                    and svlen_value is not None
+                    and end_value - pos != abs(svlen_value)
+                ):
+                    print(
+                        f"Warning: VCF line {line_num} ({chrom}:{pos_string}) has conflicting "
+                        f"END={end_value} and SVLEN={svlen_value}; using END to determine the interval.",
+                        file=sys.stderr
+                    )
+                    interval_conflicts_warned += 1
+
+                try:
                     chrom, plot_start, plot_end = _calculate_vcf_region(chrom, pos, ref, alt, info, padding)
                     _, target_start, target_end = _calculate_vcf_target_region(chrom, pos, ref, alt, info)
+                    if plot_end <= plot_start or target_end <= target_start:
+                        raise ValueError('calculated interval is empty or reversed')
                     regions.append((chrom, plot_start, plot_end, target_start, target_end))
-                except (ValueError, IndexError) as e:
-                    # Skip malformed lines
-                    continue
+                    accepted_vcf_records += 1
+                except (ValueError, IndexError) as exc:
+                    warn_vcf(line_num, chrom, pos_string, 'invalid_interval', str(exc))
             else:
                 # BED format: chrom, start, end, ...
                 if len(parts) < 3:
@@ -328,4 +440,14 @@ def parse_regions_file(regions_path: str, padding: Optional[int] = None) -> List
                 except ValueError:
                     continue
     
+    if is_vcf:
+        details = ', '.join(f'{key}={count}' for key, count in sorted(skipped.items()))
+        summary = (
+            f"[VCF-SUMMARY] accepted={accepted_vcf_records}, skipped={sum(skipped.values())}"
+            + (f" ({details})" if details else '')
+        )
+        if interval_conflicts_warned:
+            summary += f", END/SVLEN conflicts warned={interval_conflicts_warned}"
+        print(summary, file=sys.stderr)
+
     return regions
