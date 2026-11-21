@@ -1,41 +1,48 @@
 <?xml version="1.0" ?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="530">
+<svg xmlns:bamsnap="https://github.com/comery/Bamsnap-LRS/metadata" xmlns="http://www.w3.org/2000/svg" width="1500" height="530">
+  <metadata id="bamsnap-lrs-metadata">
+    <bamsnap:provenance>
+      <bamsnap:version>2.0.0</bamsnap:version>
+      <bamsnap:command>bin/bamsnap-lrs dna --bam example/sim.mapping.sort.bam --regions example/region.bed --out-prefix example/batch --fa example/chm13v2.chrM.fasta --bed example/chrM.annot.bed --show-axis --show-coverage --track-title 'Test Reads - PDF' --width 1500 --detail high --overview-detail show</bamsnap:command>
+      <bamsnap:date>2026-11-21T10:52:55Z</bamsnap:date>
+      <bamsnap:fetched_records>35</bamsnap:fetched_records>
+      <bamsnap:filtered_records>35</bamsnap:filtered_records>
+      <bamsnap:displayed_records>35</bamsnap:displayed_records>
+    </bamsnap:provenance>
+  </metadata>
   <rect x="0" y="0" width="1500" height="530" fill="white"/>
   <text x="20" y="10" font-size="10" font-weight="bold" fill="black" text-anchor="start">chrM</text>
   <line x1="20" y1="30" x2="1480" y2="30" stroke="black" stroke-width="1"/>
   <line x1="20" y1="27" x2="20" y2="33" stroke="black" stroke-width="1"/>
   <text x="20" y="23" font-size="9" fill="black" text-anchor="start">0</text>
-  <line x1="166" y1="27" x2="166" y2="33" stroke="black" stroke-width="1"/>
-  <text x="166" y="23" font-size="9" fill="black" text-anchor="middle">450</text>
-  <line x1="312" y1="27" x2="312" y2="33" stroke="black" stroke-width="1"/>
-  <text x="312" y="23" font-size="9" fill="black" text-anchor="middle">900</text>
-  <line x1="458" y1="27" x2="458" y2="33" stroke="black" stroke-width="1"/>
-  <text x="458" y="23" font-size="9" fill="black" text-anchor="middle">1,350</text>
-  <line x1="604" y1="27" x2="604" y2="33" stroke="black" stroke-width="1"/>
-  <text x="604" y="23" font-size="9" fill="black" text-anchor="middle">1,800</text>
-  <line x1="750" y1="27" x2="750" y2="33" stroke="black" stroke-width="1"/>
-  <text x="750" y="23" font-size="9" fill="black" text-anchor="middle">2,250</text>
-  <line x1="896" y1="27" x2="896" y2="33" stroke="black" stroke-width="1"/>
-  <text x="896" y="23" font-size="9" fill="black" text-anchor="middle">2,700</text>
-  <line x1="1042" y1="27" x2="1042" y2="33" stroke="black" stroke-width="1"/>
-  <text x="1042" y="23" font-size="9" fill="black" text-anchor="middle">3,150</text>
-  <line x1="1188" y1="27" x2="1188" y2="33" stroke="black" stroke-width="1"/>
-  <text x="1188" y="23" font-size="9" fill="black" text-anchor="middle">3,600</text>
-  <line x1="1334" y1="27" x2="1334" y2="33" stroke="black" stroke-width="1"/>
-  <text x="1334" y="23" font-size="9" fill="black" text-anchor="middle">4,050</text>
+  <line x1="182" y1="27" x2="182" y2="33" stroke="black" stroke-width="1"/>
+  <text x="182" y="23" font-size="9" fill="black" text-anchor="middle">500</text>
+  <line x1="344" y1="27" x2="344" y2="33" stroke="black" stroke-width="1"/>
+  <text x="344" y="23" font-size="9" fill="black" text-anchor="middle">1,000</text>
+  <line x1="506" y1="27" x2="506" y2="33" stroke="black" stroke-width="1"/>
+  <text x="506" y="23" font-size="9" fill="black" text-anchor="middle">1,500</text>
+  <line x1="668" y1="27" x2="668" y2="33" stroke="black" stroke-width="1"/>
+  <text x="668" y="23" font-size="9" fill="black" text-anchor="middle">2,000</text>
+  <line x1="831" y1="27" x2="831" y2="33" stroke="black" stroke-width="1"/>
+  <text x="831" y="23" font-size="9" fill="black" text-anchor="middle">2,500</text>
+  <line x1="993" y1="27" x2="993" y2="33" stroke="black" stroke-width="1"/>
+  <text x="993" y="23" font-size="9" fill="black" text-anchor="middle">3,000</text>
+  <line x1="1155" y1="27" x2="1155" y2="33" stroke="black" stroke-width="1"/>
+  <text x="1155" y="23" font-size="9" fill="black" text-anchor="middle">3,500</text>
+  <line x1="1317" y1="27" x2="1317" y2="33" stroke="black" stroke-width="1"/>
+  <text x="1317" y="23" font-size="9" fill="black" text-anchor="middle">4,000</text>
   <line x1="1480" y1="27" x2="1480" y2="33" stroke="black" stroke-width="1"/>
   <text x="1480" y="23" font-size="9" fill="black" text-anchor="end">4,500</text>
   <rect x="20" y="34" width="973" height="496" fill="#ebf2ff"/>
   <line x1="20" y1="34" x2="20" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="166" y1="34" x2="166" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="312" y1="34" x2="312" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="458" y1="34" x2="458" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="604" y1="34" x2="604" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="750" y1="34" x2="750" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="896" y1="34" x2="896" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="1042" y1="34" x2="1042" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="1188" y1="34" x2="1188" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
-  <line x1="1334" y1="34" x2="1334" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="182" y1="34" x2="182" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="344" y1="34" x2="344" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="506" y1="34" x2="506" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="668" y1="34" x2="668" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="831" y1="34" x2="831" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="993" y1="34" x2="993" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="1155" y1="34" x2="1155" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
+  <line x1="1317" y1="34" x2="1317" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
   <line x1="1480" y1="34" x2="1480" y2="530" stroke="#dcdcdc" stroke-width="1" stroke-dasharray="3,3"/>
   <rect x="0" y="34" width="1500" height="15" fill="#f5f5f5"/>
   <line x1="0" y1="48" x2="1500" y2="48" stroke="#c8c8c8" stroke-width="1"/>

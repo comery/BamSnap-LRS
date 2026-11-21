@@ -1,5 +1,15 @@
 <?xml version="1.0" ?>
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="420">
+<svg xmlns:bamsnap="https://github.com/comery/Bamsnap-LRS/metadata" xmlns="http://www.w3.org/2000/svg" width="1500" height="420">
+  <metadata id="bamsnap-lrs-metadata">
+    <bamsnap:provenance>
+      <bamsnap:version>2.0.0</bamsnap:version>
+      <bamsnap:command>bin/bamsnap-lrs dna --bam example/sim.mapping.sort.bam --pos chrM:1000-3000 --out example/chrM_1000_3000.gff.bamsnapLRS.svg --fa example/chm13v2.chrM.fasta --show-axis --show-coverage --track-title 'Test Reads - SVG' --width 1500 -g example/test.gff --overview-detail show</bamsnap:command>
+      <bamsnap:date>2026-11-21T10:53:00Z</bamsnap:date>
+      <bamsnap:fetched_records>24</bamsnap:fetched_records>
+      <bamsnap:filtered_records>24</bamsnap:filtered_records>
+      <bamsnap:displayed_records>24</bamsnap:displayed_records>
+    </bamsnap:provenance>
+  </metadata>
   <rect x="0" y="0" width="1500" height="420" fill="white"/>
   <text x="20" y="10" font-size="10" font-weight="bold" fill="black" text-anchor="start">chrM</text>
   <line x1="20" y1="30" x2="1480" y2="30" stroke="black" stroke-width="1"/>
