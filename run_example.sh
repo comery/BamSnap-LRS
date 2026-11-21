@@ -136,6 +136,28 @@ python bin/bamsnap-lrs dna \
     --width 1500 \
     -g example/test.gff --overview-detail show
 
+echo "5, report contig-name mismatches as errors"
+python bin/bamsnap-lrs dna \
+	--bam "example/sim.mapping.sort.bam" \
+    --pos "chrM:2700-2800" \
+    --out example/test.svg \
+    --fa "example/rna/ref.fasta" \
+    --show-axis \
+    --show-coverage \
+    --track-title "Test Reads" \
+    --width 400 \
+    -g example/test.gff --overview-detail show
+
+python bin/bamsnap-lrs dna \
+	--bam "example/rna/test.rna.bam" \
+    --pos "chrM:2700-2800" \
+    --out example/test.svg \
+    --fa "example/chm13v2.chrM.fasta" \
+    --show-axis \
+    --show-coverage \
+    --track-title "Test Reads" \
+    --width 400 \
+    -g example/test.gff --overview-detail show
 
 # python bin/bamsnap-lrs dna \
 # 	--bam "example/sim.mapping.sort.bam" \
