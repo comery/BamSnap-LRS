@@ -54,8 +54,7 @@ BamSnap-LRS is a command-line tool for generating snapshots of BAM/CRAM alignmen
 
 ### Requirements
 - Python 3.8+
-- [`pysam`](https://pysam.readthedocs.io/) and [`CairoSVG`](https://cairosvg.org/), installed from `requirements.txt`
-- Optional: `pyfaidx` for indexed FASTA access; a built-in uncompressed-FASTA reader is used if unavailable
+- [`pysam`](https://pysam.readthedocs.io/), [`CairoSVG`](https://cairosvg.org/), and [`pyfaidx`](https://github.com/mdshw5/pyfaidx), installed from `requirements.txt`
 
 
 ### Install from source
@@ -77,11 +76,11 @@ Run commands from the repository root with `python bin/BamSnap-LRS` (or `./bin/B
 | BED | `--bed`, `--regions` | `.bed`, `.bed.gz` (gzip/BGZF) | **No** (`.tbi`/`.csi` not needed) |
 | GFF / GTF | `--gff` | `.gff`, `.gtf`, `.gff.gz`, `.gtf.gz` (gzip/BGZF) | **No** (`.tbi`/`.csi` not needed) |
 | VCF | `--regions`, `--highlight-vcf` | `.vcf`, `.vcf.gz` (gzip/BGZF) | **No** (`.tbi`/`.csi` not needed) |
-| Reference FASTA | `--fa` | **Uncompressed** `.fa`, `.fasta`, etc. | **No** pre-existing `.fai` required for plotting |
+| Reference FASTA | `--fa` | **Uncompressed** `.fa`, `.fasta`, etc. | **No** pre-existing `.fai` required; `pyfaidx` creates it automatically when needed |
 
 BAM/CRAM inputs are retrieved by genomic interval and must be indexed. BED, GFF/GTF, and VCF files are read sequentially, so compression is supported without a tabix index. For compressed region/VCF files, use the `.gz` suffix (for example, `regions.bed.gz` or `variants.vcf.gz`).
 
-`--fa` is recommended for CRAM decoding. All alignment and annotation files must use the **same reference assembly and matching contig names** (for example, `chr1` is not automatically mapped to `1`). Multiple BAM/CRAM files become separate tracks, labeled by filename without extension unless `--track-title` is supplied; sample names are not inferred from BAM read-group metadata.
+`--fa` is recommended for CRAM decoding. The required `pyfaidx` package provides indexed FASTA access; the FASTA is opened once per run and reused for sequence queries. If a `.fai` index is missing, `pyfaidx` creates it next to the FASTA on first access, so the FASTA directory must be writable at that time. Contig names must match exactly between alignment and reference files (for example, `chr1` is not automatically mapped to `1`); a missing reference contig is reported as an error.
 
 **Coordinates:** BED uses 0-based, half-open intervals; GFF/GTF and VCF use their native 1-based coordinates and are converted internally. `--pos chr:start-end` is interpreted as `[start, end)`; `--pos chr:pos` displays a window of up to 500 bp around the specified coordinate.
 
@@ -122,6 +121,7 @@ python bin/BamSnap-LRS dna \
 ```
 
 Batch mode requires `--regions` and `--out-prefix`. Outputs are named `<prefix>_<chrom>_<plot-start>_<plot-end>.<format>`; `plot-start` and `plot-end` represent the actual plotting area, include any automatic or user-specified padding.
+**VCF batch-mode SV support:** `--regions` accepts only single-allele records with `SVTYPE=INS`, `DEL`, `DUP`, or `INV`. Unsupported SV types (such as `BND` and `TRA`), multiallelic ALT records, and records with missing, invalid, or indeterminate interval information are skipped rather than plotted. When `END` and `SVLEN` are inconsistent but `END` provides a valid interval, the record is retained, a warning is issued, and `END` is used to determine the interval. The CLI reports record-specific warnings and a summary of accepted and skipped records to stderr. These restrictions apply to `--regions` VCF batch plotting, not to the SNV `--highlight-vcf` mode. BED batch input is unchanged.
 
 ### Structural Variant Snapshot Example
 
@@ -158,7 +158,7 @@ For phased read coloring, provide a VCF with phased `GT` (`|`) and phase-set `PS
 | Option | Description | Default |
 | --- | --- | --- |
 | `--bam` | One or more indexed BAM/CRAM files | Required |
-| `--pos` | Single genomic position, `chr:start-end` or `chr:pos`. Mutually exclusive with `--regions`. | - |
+| `--pos` | Single genomic position, `chr:start-end` or `chr:pos`. The `--pos` argument also accepts 0-based start and end coordinates, with the end coordinate excluded. Mutually exclusive with `--regions`. | - |
 | `--regions` | BED or VCF file for batch plotting. VCF records support SV-style intervals. Mutually exclusive with `--pos`. | - |
 | `--out` | Output file path for single-region mode (`.svg`, `.pdf`, `.png`). | required with `--pos` |
 | `--out-prefix` | Output prefix for batch mode. Output files are named by prefix plus genomic interval. | required with `--regions` |
