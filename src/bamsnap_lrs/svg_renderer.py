@@ -1,6 +1,8 @@
 """SVG renderer for bamsnap visualization"""
+
+import math
 from typing import List, Dict, Optional, Any, Tuple
-from xml.etree.ElementTree import Element, SubElement, tostring
+from xml.etree.ElementTree import Element, SubElement, tostring, register_namespace
 from xml.dom import minidom
 
 from .layout import (
@@ -106,6 +108,7 @@ SUPPLEMENTARY_MAX_TRANSPARENCY = 0.80
 AUTO_SIMPLIFY_BP_PER_PX = 1.0
 AUTO_MIN_DEL_BP = 50
 AUTO_MIN_DEL_PX = 2.0
+AUTO_MIN_INS_BP = 50
 
 
 def _is_supplementary_read_group(reads: List[Read], idxs: List[int]) -> bool:
@@ -867,10 +870,18 @@ def draw_svg_per_track_coverage(
     is_rna: bool,
     detail: str,
     bp_per_px: float,
+    highlight_filter_applied: bool = False,
 ) -> int:
     """Draw one SVG coverage track for one BAM/track."""
     track_y_start = y
-    current_y = y + draw_svg_track_header(svg, f"Coverage: {title}" if title else "Coverage", y, width)
+    if highlight_filter_applied:
+        coverage_header = (
+            f"Coverage (highlight-filtered reads): {title}"
+            if title else "Coverage (highlight-filtered reads)"
+        )
+    else:
+        coverage_header = f"Coverage: {title}" if title else "Coverage"
+    current_y = y + draw_svg_track_header(svg, coverage_header, y, width)
 
     # Reserve space for RNA arcs above the coverage bars.
     current_y += coverage_height
@@ -936,6 +947,15 @@ def draw_svg_per_track_coverage(
             draw_x = margin + px
             bar_height = int(coverage_height * min(agg_depth / max_cov, 1.0))
             if bar_height <= 0:
+                continue
+
+            # Without a reference FASTA, reference matches cannot be identified.
+            # Use neutral gray rather than implying that all bases are variants.
+            if not ref_seq:
+                SubElement(svg, "rect", {
+                    "x": str(draw_x), "y": str(bar_bottom - bar_height),
+                    "width": "1", "height": str(bar_height), "fill": "#b4b4b4"
+                })
                 continue
 
             total_count = agg_ref_match + sum(agg_variants.values())
@@ -1837,6 +1857,27 @@ def draw_svg_vcf_highlight_track(
     return (cursor_y - y) + 6
 
 
+def _nice_tick_interval(span: int, target_ticks: int) -> int:
+    """Choose a rounded genomic-coordinate interval (1, 2, or 5 x 10^n).
+
+    The target number of ticks is estimated from the available axis width,
+    keeping labels reasonably separated while aligning them to clean genomic
+    coordinates rather than anchoring them to the requested region start.
+    """
+    if span <= 0:
+        return 1
+
+    raw_interval = span / float(max(1, target_ticks))
+    exponent = math.floor(math.log10(raw_interval)) if raw_interval > 0 else 0
+    magnitude = 10 ** exponent
+    candidates = (1, 2, 5, 10)
+    nice_factor = min(
+        candidates,
+        key=lambda value: abs(math.log10(raw_interval / (value * magnitude)))
+    )
+    return max(1, int(round(nice_factor * magnitude)))
+
+
 def render_svg_snapshot(
     tracks: List[Dict[str, Any]],
     chrom: str,
@@ -1869,6 +1910,7 @@ def render_svg_snapshot(
     hap_layout: str = "packed",
     focus_region: Optional[Tuple[int, int]] = None,
     overview_detail: str = "hide",
+    metadata: Optional[Dict[str, str]] = None,
     **kwargs
 ) -> str:
     """Render snapshot as SVG string"""
@@ -1947,6 +1989,7 @@ def render_svg_snapshot(
     #     h1/h2/.../U/. and missing block information is never imputed.
     do_hap_sort = bool(highlight_sites) and not no_hap_sort
     do_hap_filter = bool(highlight_sites) and not no_hap_filter
+    coverage_filtered_by_highlight = False
     site_positions: List[int] = []
     if highlight_sites:
         # Base-pattern clustering is meaningful for SNVs. If a highlight VCF
@@ -1971,6 +2014,7 @@ def render_svg_snapshot(
             for track in tracks:
                 if do_hap_filter:
                     track['reads'] = [r for r in track['reads'] if _covers_any(r)]
+                    coverage_filtered_by_highlight = True
 
     for track in tracks:
         reads = track['reads']
@@ -2022,12 +2066,33 @@ def render_svg_snapshot(
             'phase_blocks': track_phase_blocks,
         })
 
+    # Count records remaining after any Highlight-specific filtering.
+    if metadata is not None:
+        metadata["displayed_records"] = str(
+            sum(len(track.get("reads", [])) for track in tracks)
+        )
+
     # Create SVG root element
     svg = Element("svg", {
         "width": str(width),
         "height": str(total_height),
         "xmlns": "http://www.w3.org/2000/svg"
     })
+
+    # Provenance metadata is stored separately from graphical SVG elements.
+    # It does not participate in layout or rendering.
+    if metadata:
+        metadata_namespace = "https://github.com/comery/Bamsnap-LRS/metadata"
+        register_namespace("bamsnap", metadata_namespace)
+        metadata_element = SubElement(svg, "metadata", {"id": "bamsnap-lrs-metadata"})
+        provenance_element = SubElement(
+            metadata_element, f"{{{metadata_namespace}}}provenance"
+        )
+        for key, value in metadata.items():
+            metadata_item = SubElement(
+                provenance_element, f"{{{metadata_namespace}}}{key}"
+            )
+            metadata_item.text = str(value)
 
     # Background
     SubElement(svg, "rect", {
@@ -2067,10 +2132,13 @@ def render_svg_snapshot(
         })
 
         span = max(0, end - start)
-        step = max(1, span // 10) if span > 0 else 1
-        tick_bp_positions = list(range(start, end + 1, step))
-        if not tick_bp_positions or tick_bp_positions[-1] != end:
-            tick_bp_positions.append(end)
+        # Use clean, globally aligned genomic coordinates (e.g. every 1 kb)
+        # instead of deriving tick values from the requested region start.
+        # Approximately one tick per 100 px keeps labels readable.
+        target_ticks = max(1, content_width // 100)
+        step = _nice_tick_interval(span, target_ticks)
+        first_tick = ((start + step - 1) // step) * step
+        tick_bp_positions = list(range(first_tick, end + 1, step))
 
         for pos in tick_bp_positions:
             x = margin + int((pos - start) / bp_per_px) if bp_per_px else margin
@@ -2238,7 +2306,8 @@ def render_svg_snapshot(
             current_y = draw_svg_per_track_coverage(
                 svg, reads, track_title, current_y, width, content_width,
                 coverage_height, start, end, ref_seq, coverage_max_depth,
-                margin, is_rna, detail, bp_per_px
+                margin, is_rna, detail, bp_per_px,
+                highlight_filter_applied=coverage_filtered_by_highlight,
             )
 
         # Draw read track header
@@ -2442,9 +2511,16 @@ def render_svg_snapshot(
                 color_hex = rgb_to_hex(color)
 
                 if t == "ins":
-                    # In highlight mode, suppress ins ticks/labels entirely
-                    # (long-read ins noise distracts from VCF-site analysis).
-                    if svg_highlight_index or auto_simplify:
+                    # In highlight mode, suppress insertion ticks/labels entirely
+                    # (long-read insertion noise distracts from VCF-site analysis).
+                    seg_idx = rect_to_seg.get(rect_idx)
+                    seg = r.segments[seg_idx] if seg_idx is not None else None
+                    ins_bp = int(getattr(seg, "length", 0)) if seg is not None else 0
+                    # At broad scales, simplify short insertions but retain larger
+                    # insertions as purple rectangles so structural-variant evidence
+                    # remains visible. --overview-detail show displays all insertions.
+                    hide_overview_ins = auto_simplify and ins_bp < AUTO_MIN_INS_BP
+                    if svg_highlight_index or hide_overview_ins:
                         pass
                     else:
                         # --hide-indels does not remove the insertion from the read model.
@@ -2455,12 +2531,8 @@ def render_svg_snapshot(
                         else:
                             ins_color_hex = color_hex
                             label = None
-                            if detail == "high" and show_insertion_labels:
-                                seg_idx = rect_to_seg.get(rect_idx)
-                                if seg_idx is not None:
-                                    seg = r.segments[seg_idx]
-                                    if seg and seg.length > 0:
-                                        label = f"I({seg.length})"
+                            if detail == "high" and show_insertion_labels and seg is not None and seg.length > 0:
+                                label = f"I({seg.length})"
                         # Render insertion as a virtual 1-bp block so its
                         # visual size follows a single-base mismatch rectangle.
                         # segments_to_pixels stores insertion as x0 == x1
