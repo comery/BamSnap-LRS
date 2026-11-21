@@ -41,3 +41,5 @@ python  ../../bin/bamsnap-lrs dna \
   --bam inversion.HIFI.bam --regions inversion.vcf --out-prefix inversion.svg --show-axis --show-coverage --show-supp  --overview-detail show\
   $FASTA_ARG
 
+##  vcf_warning test 
+python  ../../bin/bamsnap-lrs dna   --bam duplication.HIFI.bam --regions vcf_warning.vcf --out-prefix vcf_warning.svg --show-axis --show-coverage --show-supp  --overview-detail show --padding 0 $FASTA_ARG
